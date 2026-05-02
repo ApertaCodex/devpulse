@@ -6,6 +6,6 @@ Focus sessions help you track deep work:
 2. Enter what you'll focus on (optional)
 3. Set a duration goal
 4. Code! DevPulse tracks context switches and files during the session
-5. When done, you get a **Flow Score** (0\u201310)
+5. When done, you get a **Flow Score** (0–10)
 
 Lower context switching = higher flow score = deeper work.

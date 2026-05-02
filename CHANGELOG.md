@@ -2,6 +2,12 @@
 
 All notable changes to **DevPulse** will be documented in this file.
 
+## [2.0.1] - 2025-01-16
+
+### Fixed
+- Fixed README.md containing raw Unicode escape sequences (e.g. `\u{1F680}`) instead of actual emoji characters
+- Cleaned up all markdown files to render properly on GitHub and the VS Code Marketplace
+
 ## [2.0.0] - 2025-01-15
 
 ### Changed
