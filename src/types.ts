@@ -1,5 +1,11 @@
+/**
+ * Work intent categories detected from coding patterns.
+ */
 export type WorkIntent = 'creating' | 'debugging' | 'refactoring' | 'exploring' | 'idle' | 'unknown';
 
+/**
+ * A single activity event captured by the tracker.
+ */
 export interface ActivityEvent {
     timestamp: number;
     filePath: string;
@@ -12,6 +18,9 @@ export interface ActivityEvent {
     isActive: boolean;
 }
 
+/**
+ * A completed coding session record.
+ */
 export interface SessionRecord {
     id: string;
     startTime: number;
@@ -25,6 +34,9 @@ export interface SessionRecord {
     contextSwitches: number;
 }
 
+/**
+ * A focus session with goal tracking and flow scoring.
+ */
 export interface FocusSession {
     id: string;
     goal: string;
@@ -39,6 +51,9 @@ export interface FocusSession {
     project: string;
 }
 
+/**
+ * Daily aggregated statistics.
+ */
 export interface DailyStats {
     date: string; // YYYY-MM-DD
     totalActiveSeconds: number;
@@ -54,6 +69,9 @@ export interface DailyStats {
     filesEdited: number;
 }
 
+/**
+ * AI-generated productivity insight.
+ */
 export interface AIInsight {
     headline: string;
     summary: string;
@@ -65,6 +83,9 @@ export interface AIInsight {
     generatedAt: number;
 }
 
+/**
+ * All-time statistics for a single project.
+ */
 export interface ProjectStats {
     name: string;
     totalSeconds: number;
@@ -74,6 +95,9 @@ export interface ProjectStats {
     intentBreakdown: Record<WorkIntent, number>;
 }
 
+/**
+ * Weekly report with aggregated data and insights.
+ */
 export interface WeeklyReport {
     weekStart: string;
     weekEnd: string;

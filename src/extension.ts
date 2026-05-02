@@ -1,205 +1,168 @@
 import * as vscode from 'vscode';
 import { Logger } from './logger';
+import { Config } from './config';
+import { StatusBarManager } from './statusBar';
+import { StorageManager } from './StorageManager';
 import { ActivityTracker } from './ActivityTracker';
 import { InsightsEngine } from './InsightsEngine';
 import { FocusSessionManager } from './FocusSessionManager';
-import { StorageManager } from './StorageManager';
-import { StatusBarManager } from './StatusBarManager';
-import { TodayViewProvider } from './TodayViewProvider';
-import { InsightsViewProvider } from './InsightsViewProvider';
-import { ProjectsViewProvider } from './ProjectsViewProvider';
-import { FocusViewProvider } from './FocusViewProvider';
-import { DashboardPanel } from './DashboardPanel';
+import { registerCommands } from './commands';
+import { TodayTreeProvider } from './providers/TodayTreeProvider';
+import { InsightsTreeProvider } from './providers/InsightsTreeProvider';
+import { ProjectsTreeProvider } from './providers/ProjectsTreeProvider';
+import { FocusTreeProvider } from './providers/FocusTreeProvider';
+import { DashboardWebviewProvider } from './providers/DashboardWebviewProvider';
 
-export let logger: Logger;
+/** Global extension context, available to other modules if needed. */
 export let extensionContext: vscode.ExtensionContext;
 
 export function activate(context: vscode.ExtensionContext): void {
     extensionContext = context;
-    logger = new Logger('DevPulse');
-    logger.info('DevPulse activating...');
 
-    const config = vscode.workspace.getConfiguration('devpulse');
-    const enabled = config.get<boolean>('enabled', true);
+    // ---- Logger (singleton) ----
+    const log = Logger.create('DevPulse');
+    log.info('DevPulse activating...');
 
-    // Core services
-    const storageManager = new StorageManager(context, logger);
-    const insightsEngine = new InsightsEngine(storageManager, logger);
-    const activityTracker = new ActivityTracker(context, storageManager, insightsEngine, logger);
-    const focusSessionManager = new FocusSessionManager(context, storageManager, logger);
-    const statusBarManager = new StatusBarManager(activityTracker, focusSessionManager, logger);
+    // ---- Core services ----
+    const storage = new StorageManager(context);
+    const tracker = new ActivityTracker(storage);
+    const insights = new InsightsEngine(storage);
+    const focus = new FocusSessionManager(context, storage);
+    const statusBar = new StatusBarManager();
 
-    // Tree view providers
-    const todayProvider = new TodayViewProvider(storageManager, activityTracker, logger);
-    const insightsProvider = new InsightsViewProvider(insightsEngine, storageManager, logger);
-    const projectsProvider = new ProjectsViewProvider(storageManager, logger);
-    const focusProvider = new FocusViewProvider(focusSessionManager, storageManager, logger);
+    // ---- Tree view providers ----
+    const todayProvider = new TodayTreeProvider(storage, tracker, insights);
+    const insightsProvider = new InsightsTreeProvider(insights, storage);
+    const projectsProvider = new ProjectsTreeProvider(storage, insights);
+    const focusProvider = new FocusTreeProvider(focus, storage, insights);
 
-    // Register tree views
-    const todayView = vscode.window.createTreeView('devpulse.todayView', {
-        treeDataProvider: todayProvider,
-        showCollapseAll: false
-    });
-    const insightsView = vscode.window.createTreeView('devpulse.insightsView', {
-        treeDataProvider: insightsProvider,
-        showCollapseAll: false
-    });
-    const projectsView = vscode.window.createTreeView('devpulse.projectsView', {
-        treeDataProvider: projectsProvider,
-        showCollapseAll: true
-    });
-    const focusView = vscode.window.createTreeView('devpulse.focusView', {
-        treeDataProvider: focusProvider,
-        showCollapseAll: false
-    });
+    // ---- Webview sidebar provider ----
+    const dashboardSidebarProvider = new DashboardWebviewProvider(storage, insights, focus);
 
-    context.subscriptions.push(todayView, insightsView, projectsView, focusView);
+    // ---- Register tree views ----
+    const registrations: vscode.Disposable[] = [
+        vscode.window.createTreeView('devpulse.todayView', {
+            treeDataProvider: todayProvider, showCollapseAll: false
+        }),
+        vscode.window.createTreeView('devpulse.insightsView', {
+            treeDataProvider: insightsProvider, showCollapseAll: false
+        }),
+        vscode.window.createTreeView('devpulse.projectsView', {
+            treeDataProvider: projectsProvider, showCollapseAll: true
+        }),
+        vscode.window.createTreeView('devpulse.focusView', {
+            treeDataProvider: focusProvider, showCollapseAll: false
+        }),
+        vscode.window.registerWebviewViewProvider(
+            DashboardWebviewProvider.viewType,
+            dashboardSidebarProvider
+        )
+    ];
 
-    // Refresh all views helper
-    const refreshAllViews = () => {
+    // ---- Refresh helper ----
+    const refreshAll = (): void => {
         todayProvider.refresh();
         insightsProvider.refresh();
         projectsProvider.refresh();
         focusProvider.refresh();
-        statusBarManager.update();
+        dashboardSidebarProvider.refresh();
+        updateStatusBar();
     };
 
-    // Periodic refresh every 60 seconds
-    const refreshInterval = setInterval(refreshAllViews, 60_000);
-    context.subscriptions.push({ dispose: () => clearInterval(refreshInterval) });
+    // ---- Status bar update helper ----
+    const updateStatusBar = (): void => {
+        if (!Config.showStatusBar) {
+            statusBar.updateMain('');
+            statusBar.updateFocus('');
+            return;
+        }
 
-    // Register commands
-    context.subscriptions.push(
-        vscode.commands.registerCommand('devpulse.refresh', () => {
-            refreshAllViews();
-            logger.info('Views refreshed manually.');
-        }),
+        const totalSeconds = tracker.getTodayActiveSeconds();
+        const format = Config.statusBarFormat;
 
-        vscode.commands.registerCommand('devpulse.openDashboard', () => {
-            DashboardPanel.createOrShow(context, storageManager, insightsEngine, focusSessionManager, logger);
-        }),
-
-        vscode.commands.registerCommand('devpulse.startFocusSession', async () => {
-            const goal = await vscode.window.showInputBox({
-                prompt: 'What will you focus on? (optional)',
-                placeHolder: 'e.g. Implement authentication module'
-            });
-            const cfg = vscode.workspace.getConfiguration('devpulse');
-            const durationStr = await vscode.window.showInputBox({
-                prompt: 'Focus session duration (minutes)',
-                value: String(cfg.get<number>('focusSessionGoalMinutes', 90)),
-                validateInput: (v) => isNaN(Number(v)) || Number(v) < 1 ? 'Enter a valid number' : undefined
-            });
-            if (durationStr === undefined) { return; }
-            const duration = Number(durationStr);
-            focusSessionManager.startSession(goal ?? 'Focus Session', duration);
-            await vscode.commands.executeCommand('setContext', 'devpulse.focusActive', true);
-            refreshAllViews();
-            vscode.window.showInformationMessage(`$(target) Focus session started! Goal: ${duration} minutes.`);
-        }),
-
-        vscode.commands.registerCommand('devpulse.stopFocusSession', async () => {
-            const summary = focusSessionManager.stopSession();
-            await vscode.commands.executeCommand('setContext', 'devpulse.focusActive', false);
-            refreshAllViews();
-            if (summary) {
-                vscode.window.showInformationMessage(
-                    `$(check) Focus session complete! Duration: ${summary.durationMinutes}m | Score: ${summary.flowScore}/10`
-                );
-            }
-        }),
-
-        vscode.commands.registerCommand('devpulse.showWeeklyReport', () => {
-            DashboardPanel.createOrShow(context, storageManager, insightsEngine, focusSessionManager, logger, 'weekly');
-        }),
-
-        vscode.commands.registerCommand('devpulse.toggleTracking', async () => {
-            const cfg = vscode.workspace.getConfiguration('devpulse');
-            const current = cfg.get<boolean>('enabled', true);
-            await cfg.update('enabled', !current, vscode.ConfigurationTarget.Global);
-            if (!current) {
-                activityTracker.enable();
-                vscode.window.showInformationMessage('$(record) DevPulse tracking enabled.');
+        let text = '';
+        if (!Config.enabled) {
+            text = '$(debug-pause) DevPulse: Paused';
+        } else if (format === 'time') {
+            text = `$(clock) ${insights.formatDuration(totalSeconds)}`;
+        } else if (format === 'time+intent') {
+            const idle = tracker.isCurrentlyIdle();
+            const intentIcons: Record<string, string> = {
+                creating: '$(add)', debugging: '$(debug)', refactoring: '$(edit)',
+                exploring: '$(search)', idle: '$(coffee)', unknown: '$(pulse)'
+            };
+            const icon = idle ? '$(coffee)' : (intentIcons[tracker.getCurrentIntent()] ?? '$(pulse)');
+            text = idle
+                ? `${icon} ${insights.formatDuration(totalSeconds)} \u00b7 idle`
+                : `${icon} ${insights.formatDuration(totalSeconds)}`;
+        } else {
+            // focus format
+            const session = focus.getCurrentSession();
+            if (session) {
+                const elapsed = focus.getElapsedMinutes();
+                text = `$(target) ${elapsed}/${session.goalMinutes}m`;
             } else {
-                activityTracker.disable();
-                vscode.window.showInformationMessage('$(debug-pause) DevPulse tracking paused.');
+                text = `$(clock) ${insights.formatDuration(totalSeconds)}`;
             }
-            statusBarManager.update();
-        }),
+        }
+        statusBar.updateMain(text);
 
-        vscode.commands.registerCommand('devpulse.clearData', async () => {
-            const answer = await vscode.window.showWarningMessage(
-                'Are you sure you want to clear ALL DevPulse tracking data? This cannot be undone.',
-                { modal: true },
-                'Clear All Data'
-            );
-            if (answer === 'Clear All Data') {
-                await storageManager.clearAllData();
-                refreshAllViews();
-                vscode.window.showInformationMessage('$(trash) All DevPulse data cleared.');
+        // Focus item
+        const session = focus.getCurrentSession();
+        if (session) {
+            const elapsed = focus.getElapsedMinutes();
+            const progress = Math.min(100, Math.round((elapsed / session.goalMinutes) * 100));
+            statusBar.updateFocus(`$(target) Focus: ${elapsed}m/${session.goalMinutes}m (${progress}%)`);
+        } else {
+            statusBar.updateFocus('');
+        }
+    };
+
+    // ---- Register all commands ----
+    const commandDisposables = registerCommands({
+        context, storage, tracker, insights, focus, statusBar, refreshAll
+    });
+    registrations.push(...commandDisposables);
+
+    // ---- Periodic refresh (every 60s) ----
+    const refreshInterval = setInterval(refreshAll, 60_000);
+    registrations.push({ dispose: () => clearInterval(refreshInterval) });
+
+    // ---- Config change listener ----
+    registrations.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('devpulse')) {
+                refreshAll();
             }
-        }),
-
-        vscode.commands.registerCommand('devpulse.exportData', async () => {
-            await vscode.window.withProgress(
-                { location: vscode.ProgressLocation.Notification, title: 'Exporting DevPulse data...' },
-                async () => {
-                    const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file('devpulse-export.json'),
-                        filters: { 'JSON': ['json'] }
-                    });
-                    if (!uri) { return; }
-                    const data = await storageManager.exportAll();
-                    await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 2), 'utf8'));
-                    vscode.window.showInformationMessage(`$(export) Data exported to ${uri.fsPath}`);
-                }
-            );
-        }),
-
-        vscode.commands.registerCommand('devpulse.showAIInsights', async () => {
-            await vscode.window.withProgress(
-                { location: vscode.ProgressLocation.Notification, title: '$(sparkle) Generating AI insights...' },
-                async () => {
-                    const insights = await insightsEngine.generateAIInsights();
-                    insightsProvider.refresh();
-                    DashboardPanel.createOrShow(context, storageManager, insightsEngine, focusSessionManager, logger, 'insights');
-                    vscode.window.showInformationMessage(`$(sparkle) ${insights.headline}`);
-                }
-            );
-        }),
-
-        vscode.commands.registerCommand('devpulse.configureSettings', () => {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'devpulse');
         })
     );
 
-    // Start tracking if enabled
-    if (enabled) {
-        activityTracker.enable();
+    // ---- Focus session change listener ----
+    registrations.push(
+        focus.onDidChange(() => updateStatusBar())
+    );
+
+    // ---- Disposable managers ----
+    registrations.push(tracker, statusBar, focus);
+
+    // ---- Push all registrations ----
+    registrations.forEach(r => context.subscriptions.push(r));
+
+    // ---- Start tracking if enabled ----
+    if (Config.enabled) {
+        tracker.enable();
         vscode.commands.executeCommand('setContext', 'devpulse.focusActive', false);
     }
 
-    // Listen for config changes
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('devpulse')) {
-                statusBarManager.update();
-                refreshAllViews();
-            }
-        })
-    );
-
-    // Dispose all managers
-    context.subscriptions.push(
-        activityTracker,
-        statusBarManager,
-        focusSessionManager
-    );
-
-    logger.info('DevPulse activated successfully.');
-    statusBarManager.update();
+    // ---- Initial render ----
+    updateStatusBar();
+    log.info('DevPulse activated successfully.');
 }
 
 export function deactivate(): void {
-    logger?.info('DevPulse deactivated.');
+    try {
+        Logger.instance.info('DevPulse deactivated.');
+    } catch {
+        // Logger may not exist if activation failed
+    }
 }

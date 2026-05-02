@@ -1,42 +1,60 @@
 import * as vscode from 'vscode';
 
+/**
+ * Centralized logger that writes to a VS Code OutputChannel.
+ * Use the singleton via `Logger.instance` after calling `Logger.create()`.
+ */
 export class Logger {
-    private readonly outputChannel: vscode.OutputChannel;
+    private static _instance: Logger | undefined;
+    private readonly channel: vscode.OutputChannel;
 
-    constructor(name: string) {
-        this.outputChannel = vscode.window.createOutputChannel(name);
+    private constructor(name: string) {
+        this.channel = vscode.window.createOutputChannel(name);
     }
 
-    public info(message: string): void {
-        this.log('INFO', message);
+    /** Create the singleton logger. Call once in `activate()`. */
+    public static create(name: string): Logger {
+        if (!Logger._instance) {
+            Logger._instance = new Logger(name);
+        }
+        return Logger._instance;
     }
 
-    public warn(message: string): void {
-        this.log('WARN', message);
+    /** Get the singleton instance. Throws if `create()` was not called. */
+    public static get instance(): Logger {
+        if (!Logger._instance) {
+            throw new Error('Logger not initialised — call Logger.create() first');
+        }
+        return Logger._instance;
     }
 
-    public error(message: string, error?: unknown): void {
-        this.log('ERROR', message);
-        if (error instanceof Error) {
-            this.log('ERROR', `  ${error.message}`);
-            if (error.stack) {
-                this.log('ERROR', error.stack);
-            }
-        } else if (error !== undefined) {
-            this.log('ERROR', String(error));
+    public info(msg: string): void {
+        this.write('INFO', msg);
+    }
+
+    public warn(msg: string): void {
+        this.write('WARN', msg);
+    }
+
+    public error(msg: string, err?: unknown): void {
+        this.write('ERROR', msg);
+        if (err instanceof Error) {
+            this.write('ERROR', `  ${err.message}`);
+            if (err.stack) { this.write('ERROR', err.stack); }
+        } else if (err !== undefined) {
+            this.write('ERROR', String(err));
         }
     }
 
     public show(): void {
-        this.outputChannel.show();
+        this.channel.show();
     }
 
     public dispose(): void {
-        this.outputChannel.dispose();
+        this.channel.dispose();
     }
 
-    private log(level: string, message: string): void {
-        const timestamp = new Date().toISOString();
-        this.outputChannel.appendLine(`[${timestamp}] [${level}] ${message}`);
+    private write(level: string, msg: string): void {
+        this.channel.appendLine(`[${new Date().toISOString()}] [${level}] ${msg}`);
     }
 }

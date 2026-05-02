@@ -1,30 +1,30 @@
-# DevPulse — Developer Productivity Insights
+# DevPulse \u2014 Developer Productivity Insights
 
 > A VS Code extension that tracks not just **time**, but **output, focus, and productivity patterns**.
 
-[![Version](https://img.shields.io/badge/version-1.10.0-blue.svg)](https://github.com/apertacodex/devpulse)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/apertacodex/devpulse)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
 
-## 🚀 Overview
+## \u{1F680} Overview
 
-**DevPulse** automatically tracks your coding activity and transforms it into meaningful productivity insights — going far beyond simple time tracking.
+**DevPulse** automatically tracks your coding activity and transforms it into meaningful productivity insights \u2014 going far beyond simple time tracking.
 
-Instead of just telling you *"you coded 5 hours"*, DevPulse tells you:
-> *"3h building features, 1.5h debugging, 30m reading code — and you work best between 10–12 AM."*
+Instead of just telling you *\"you coded 5 hours\"*, DevPulse tells you:
+> *\"3h building features, 1.5h debugging, 30m reading code \u2014 and you work best between 10\u201312 AM.\"*
 
 ---
 
-## ✨ Features
+## \u2728 Features
 
-### ⏱ Automatic Time Tracking
-- Tracks coding activity in real time — no manual timers
+### \u23F1 Automatic Time Tracking
+- Tracks coding activity in real time \u2014 no manual timers
 - Detects active coding vs idle time
 - Tracks time per file, language, and project
 - Runs silently in the background with minimal overhead
 
-### 🧠 Work Intent Detection
+### \u{1F9E0} Work Intent Detection
 | Intent | Description |
 |---|---|
 | **Creating** | Writing new code (more additions than deletions) |
@@ -32,59 +32,58 @@ Instead of just telling you *"you coded 5 hours"*, DevPulse tells you:
 | **Refactoring** | Heavy deletions and rewrites |
 | **Exploring** | Reading and navigating code |
 
-### 🎯 Focus Session Management
+### \u{1F3AF} Focus Session Management
 - Start timed focus sessions with a goal description
 - Track context switches and files worked on during the session
-- Automatic flow score calculation (0–10)
+- Automatic flow score calculation (0\u201310)
 - Goal completion notifications
 - Historical session log with scores
 
-### 🔀 Context Switching Detection
+### \u{1F500} Context Switching Detection
 - Counts file/project switches throughout the day
 - Optional notification when excessive switching is detected
 - Per-hour context switch rate in weekly reports
 
-### 📊 Interactive Dashboard
+### \u{1F4CA} Interactive Dashboard
 - **Today Tab**: Hourly heatmap, work breakdown, language stats
 - **Weekly Tab**: 7-day trend, top projects, top languages
 - **AI Insights Tab**: Productivity score, coaching tips, peak hours
 - **Focus Tab**: Active session controls, recent session history
 
-### 🤖 AI Coaching
-- Productivity score (0–100) based on your patterns
-- Focus score (0–10) based on session depth
+### \u{1F916} AI Coaching
+- Productivity score (0\u2013100) based on your patterns
+- Focus score (0\u201310) based on session depth
 - Personalized recommendations generated from your data
 - Peak hour identification
 - Context switching warnings
 
-### 🔒 Privacy-First
+### \u{1F512} Privacy-First
 - All data stored locally using VS Code's built-in global state
 - No API keys, no cloud sync, no external requests
-- Configurable data retention (7–365 days)
+- Configurable data retention (7\u2013365 days)
 - Full data export to JSON
 - One-click data deletion
 
 ---
 
-## 📦 Installation
+## \u{1F4E6} Installation
 
 1. Open VS Code
 2. Press `Ctrl+P` / `Cmd+P`
 3. Type `ext install apertacodex.devpulse`
 4. Press Enter
 
-Or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=apertacodex.devpulse).
-
 ---
 
-## 🎮 Usage
+## \u{1F3AE} Usage
 
 ### Sidebar Panel
-Click the **DevPulse icon** (pulse wave) in the Activity Bar to open the sidebar with four views:
-- **Today's Activity** — live stats for the current day
-- **Insights & Coaching** — AI-generated tips and quick stats
-- **Projects & Languages** — breakdown by project and language
-- **Focus & Flow** — manage and review focus sessions
+Click the **DevPulse icon** (pulse wave) in the Activity Bar to open the sidebar with five views:
+- **Today's Activity** \u2014 live stats for the current day
+- **Insights & Coaching** \u2014 AI-generated tips and quick stats
+- **Projects & Languages** \u2014 breakdown by project and language
+- **Focus & Flow** \u2014 manage and review focus sessions
+- **Quick Dashboard** \u2014 compact webview summary
 
 ### Keyboard Shortcuts
 | Shortcut | Action |
@@ -102,10 +101,12 @@ All commands are available via `Ctrl+Shift+P`:
 - `DevPulse: Toggle Tracking On/Off`
 - `DevPulse: Export Data as JSON`
 - `DevPulse: Clear All Tracking Data`
+- `DevPulse: Show Info`
+- `DevPulse: Configure DevPulse Settings`
 
 ---
 
-## ⚙️ Configuration
+## \u2699\uFE0F Configuration
 
 | Setting | Default | Description |
 |---|---|---|
@@ -125,45 +126,33 @@ All commands are available via `Ctrl+Shift+P`:
 
 ---
 
-## 🏗 Architecture
+## \u{1F3D7} Architecture
 
 ```
 src/
-├── extension.ts          # Activation, command registration
-├── logger.ts             # Centralized output channel logging
-├── types.ts              # Shared TypeScript interfaces
-├── ActivityTracker.ts    # Core event-based tracking engine
-├── InsightsEngine.ts     # Analytics, AI coaching, report generation
-├── FocusSessionManager.ts # Focus session lifecycle
-├── StorageManager.ts     # VS Code globalState persistence
-├── StatusBarManager.ts   # Status bar items
-├── DashboardPanel.ts     # Webview dashboard panel
-├── TodayViewProvider.ts  # Today's activity tree view
-├── InsightsViewProvider.ts # Insights tree view
-├── ProjectsViewProvider.ts # Projects tree view
-└── FocusViewProvider.ts  # Focus sessions tree view
+\u251C\u2500\u2500 extension.ts              # Activation, registrations array
+\u251C\u2500\u2500 commands.ts               # COMMANDS const + registerCommands()
+\u251C\u2500\u2500 logger.ts                 # Singleton Logger with OutputChannel
+\u251C\u2500\u2500 config.ts                 # Typed Config wrapper
+\u251C\u2500\u2500 statusBar.ts              # StatusBarManager
+\u251C\u2500\u2500 terminal.ts               # Terminal utilities
+\u251C\u2500\u2500 types.ts                  # Shared TypeScript interfaces
+\u251C\u2500\u2500 ActivityTracker.ts        # Core event-based tracking engine
+\u251C\u2500\u2500 InsightsEngine.ts         # Analytics and AI coaching
+\u251C\u2500\u2500 FocusSessionManager.ts    # Focus session lifecycle
+\u251C\u2500\u2500 StorageManager.ts         # VS Code globalState persistence
+\u251C\u2500\u2500 DashboardPanel.ts         # Full webview dashboard panel
+\u2514\u2500\u2500 providers/
+    \u251C\u2500\u2500 TodayTreeProvider.ts      # Today's activity tree view
+    \u251C\u2500\u2500 InsightsTreeProvider.ts   # Insights tree view
+    \u251C\u2500\u2500 ProjectsTreeProvider.ts   # Projects tree view
+    \u251C\u2500\u2500 FocusTreeProvider.ts      # Focus sessions tree view
+    \u2514\u2500\u2500 DashboardWebviewProvider.ts # Sidebar webview
 ```
 
 ---
 
-## 🆚 Comparison
-
-| Feature | WakaTime | DevPulse |
-|---|---|---|
-| Time tracking | ✅ | ✅ |
-| Language stats | ✅ | ✅ |
-| Work type detection | ❌ | ✅ |
-| Focus sessions | ❌ | ✅ |
-| Flow scoring | ❌ | ✅ |
-| AI insights | ❌ | ✅ |
-| Context switching detection | ❌ | ✅ |
-| Privacy-first / local | ⚠️ | ✅ |
-| No API key required | ❌ | ✅ |
-| VS Code native UI | ❌ | ✅ |
-
----
-
-## 🤝 Contributing
+## \u{1F91D} Contributing
 
 Pull requests are welcome! Please open an issue first to discuss major changes.
 
@@ -177,6 +166,6 @@ npm run watch
 
 ---
 
-## 📄 License
+## \u{1F4C4} License
 
-MIT © [apertacodex](https://github.com/apertacodex)
+MIT \u00A9 [apertacodex](https://github.com/apertacodex)

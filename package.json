@@ -2,7 +2,7 @@
   "name": "devpulse",
   "displayName": "DevPulse — Developer Productivity Insights",
   "description": "Automatically tracks coding activity and transforms it into meaningful productivity insights. Goes beyond time tracking to reveal work intent, focus patterns, context switching, and AI-powered coaching.",
-  "version": "1.10.0",
+  "version": "2.0.0",
   "publisher": "apertacodex",
   "license": "MIT",
   "repository": {
@@ -14,7 +14,7 @@
   },
   "homepage": "https://github.com/apertacodex/devpulse#readme",
   "engines": {
-    "vscode": "^1.108.0"
+    "vscode": "^1.118.0"
   },
   "categories": [
     "Other",
@@ -77,10 +77,30 @@
           "name": "Focus & Flow",
           "icon": "$(eye)",
           "contextualTitle": "DevPulse"
+        },
+        {
+          "type": "webview",
+          "id": "devpulse.dashboardSidebar",
+          "name": "Quick Dashboard",
+          "icon": "$(dashboard)",
+          "contextualTitle": "DevPulse",
+          "visibility": "collapsed"
         }
       ]
     },
     "commands": [
+      {
+        "command": "devpulse.showInfo",
+        "title": "Show Info",
+        "icon": "$(info)",
+        "category": "DevPulse"
+      },
+      {
+        "command": "devpulse.openTerminal",
+        "title": "Open Terminal",
+        "icon": "$(terminal)",
+        "category": "DevPulse"
+      },
       {
         "command": "devpulse.refresh",
         "title": "Refresh Stats",
@@ -108,7 +128,7 @@
       {
         "command": "devpulse.showWeeklyReport",
         "title": "Show Weekly Report",
-        "icon": "$(report)",
+        "icon": "$(notebook)",
         "category": "DevPulse"
       },
       {
@@ -139,6 +159,24 @@
         "command": "devpulse.configureSettings",
         "title": "Configure DevPulse Settings",
         "icon": "$(settings-gear)",
+        "category": "DevPulse"
+      },
+      {
+        "command": "devpulse.openWebview",
+        "title": "Open Dashboard Panel",
+        "icon": "$(dashboard)",
+        "category": "DevPulse"
+      },
+      {
+        "command": "devpulse.addItem",
+        "title": "Add Bookmark",
+        "icon": "$(add)",
+        "category": "DevPulse"
+      },
+      {
+        "command": "devpulse.removeItem",
+        "title": "Remove Item",
+        "icon": "$(trash)",
         "category": "DevPulse"
       }
     ],
@@ -178,12 +216,28 @@
           "command": "devpulse.toggleTracking",
           "when": "view =~ /devpulse/",
           "group": "overflow@3"
+        },
+        {
+          "command": "devpulse.configureSettings",
+          "when": "view =~ /devpulse/",
+          "group": "overflow@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "devpulse.removeItem",
+          "when": "view == devpulse.todayView && viewItem == removable",
+          "group": "inline"
         }
       ],
       "commandPalette": [
         {
           "command": "devpulse.stopFocusSession",
           "when": "devpulse.focusActive"
+        },
+        {
+          "command": "devpulse.removeItem",
+          "when": "false"
         }
       ]
     },
@@ -305,7 +359,56 @@
           "description": "Glob patterns for files to exclude from tracking."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "devpulse.gettingStarted",
+        "title": "Getting Started with DevPulse",
+        "description": "Learn how to track your productivity, start focus sessions, and get AI-powered coaching.",
+        "steps": [
+          {
+            "id": "devpulse.walkthrough.explore",
+            "title": "Explore the Sidebar",
+            "description": "Click the DevPulse icon in the Activity Bar to see your activity, insights, projects, and focus sessions.\n\n[Open DevPulse Sidebar](command:devpulse.todayView.focus)",
+            "media": {
+              "markdown": "resources/walkthrough/explore.md"
+            }
+          },
+          {
+            "id": "devpulse.walkthrough.dashboard",
+            "title": "Open the Dashboard",
+            "description": "View your hourly heatmap, work breakdown, language stats, and weekly trends in a rich interactive dashboard.\n\n[Open Dashboard](command:devpulse.openDashboard)",
+            "media": {
+              "markdown": "resources/walkthrough/dashboard.md"
+            }
+          },
+          {
+            "id": "devpulse.walkthrough.focus",
+            "title": "Start a Focus Session",
+            "description": "Track deep work with timed focus sessions. Set a goal, minimize distractions, and get a flow score at the end.\n\n[Start Focus Session](command:devpulse.startFocusSession)",
+            "media": {
+              "markdown": "resources/walkthrough/focus.md"
+            }
+          },
+          {
+            "id": "devpulse.walkthrough.insights",
+            "title": "Generate AI Insights",
+            "description": "Get personalized productivity coaching based on your coding patterns, peak hours, and context switching habits.\n\n[Generate Insights](command:devpulse.showAIInsights)",
+            "media": {
+              "markdown": "resources/walkthrough/insights.md"
+            }
+          },
+          {
+            "id": "devpulse.walkthrough.configure",
+            "title": "Configure Settings",
+            "description": "Customize idle thresholds, focus session defaults, status bar format, and data retention.\n\n[Open Settings](command:devpulse.configureSettings)",
+            "media": {
+              "markdown": "resources/walkthrough/configure.md"
+            }
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -314,7 +417,7 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.108.1",
+    "@types/vscode": "^1.118.0",
     "@types/node": "^25.0.9",
     "typescript": "^5.9.3",
     "ovsx": "^0.10.8"

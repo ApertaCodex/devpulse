@@ -3,33 +3,37 @@ import { Logger } from './logger';
 import { StorageManager } from './StorageManager';
 import { FocusSession } from './types';
 
+/**
+ * Manages focus session lifecycle: start, track, stop, score.
+ * Emits `onDidChange` when session state changes.
+ */
 export class FocusSessionManager implements vscode.Disposable {
     private readonly context: vscode.ExtensionContext;
-    private readonly storageManager: StorageManager;
-    private readonly logger: Logger;
+    private readonly storage: StorageManager;
+    private readonly log: Logger;
     private currentSession: FocusSession | null = null;
     private sessionTimer?: ReturnType<typeof setInterval>;
     private readonly _onDidChange = new vscode.EventEmitter<void>();
     public readonly onDidChange = this._onDidChange.event;
-    private contextSwitchCount = 0;
+    private switchCount = 0;
     private lastFile = '';
+    private readonly sessionDisposables: vscode.Disposable[] = [];
 
-    constructor(context: vscode.ExtensionContext, storageManager: StorageManager, logger: Logger) {
+    constructor(context: vscode.ExtensionContext, storage: StorageManager) {
         this.context = context;
-        this.storageManager = storageManager;
-        this.logger = logger;
+        this.storage = storage;
+        this.log = Logger.instance;
     }
 
+    /** Start a new focus session with a goal and duration. */
     public startSession(goal: string, goalMinutes: number): void {
-        if (this.currentSession) {
-            this.stopSession();
-        }
-        const id = `focus-${Date.now()}`;
+        if (this.currentSession) { this.stopSession(); }
+
         const folders = vscode.workspace.workspaceFolders;
         const project = folders ? folders[0].name : 'Unknown';
 
         this.currentSession = {
-            id,
+            id: `focus-${Date.now()}`,
             goal,
             startTime: Date.now(),
             durationMinutes: 0,
@@ -40,29 +44,30 @@ export class FocusSessionManager implements vscode.Disposable {
             filesWorkedOn: [],
             project
         };
-        this.contextSwitchCount = 0;
+        this.switchCount = 0;
+        this.lastFile = '';
 
-        // Track file switches during focus session
-        const editorDisposable = vscode.window.onDidChangeActiveTextEditor(editor => {
+        // Track file switches
+        const editorListener = vscode.window.onDidChangeActiveTextEditor(editor => {
             if (!this.currentSession || !editor) { return; }
             const file = editor.document.uri.fsPath;
             if (file !== this.lastFile) {
-                this.contextSwitchCount++;
-                this.currentSession.contextSwitches = this.contextSwitchCount;
+                this.switchCount++;
+                this.currentSession.contextSwitches = this.switchCount;
                 if (!this.currentSession.filesWorkedOn.includes(file)) {
                     this.currentSession.filesWorkedOn.push(file);
                 }
                 this.lastFile = file;
             }
         });
-        this.context.subscriptions.push(editorDisposable);
+        this.sessionDisposables.push(editorListener);
 
-        // Goal timer
+        // Goal completion timer
         const goalMs = goalMinutes * 60 * 1000;
         const goalTimer = setTimeout(() => {
             if (this.currentSession) {
                 vscode.window.showInformationMessage(
-                    `$(target) Focus goal reached! ${goalMinutes} minutes completed. Keep going or stop the session.`,
+                    `$(target) Focus goal reached! ${goalMinutes} minutes completed.`,
                     'Stop Session'
                 ).then(choice => {
                     if (choice === 'Stop Session') {
@@ -71,21 +76,23 @@ export class FocusSessionManager implements vscode.Disposable {
                 });
             }
         }, goalMs);
-        this.context.subscriptions.push({ dispose: () => clearTimeout(goalTimer) });
+        this.sessionDisposables.push({ dispose: () => clearTimeout(goalTimer) });
 
-        // Update timer every minute
+        // Minute ticker
         this.sessionTimer = setInterval(() => {
             if (this.currentSession) {
-                const elapsed = (Date.now() - this.currentSession.startTime) / 60000;
-                this.currentSession.durationMinutes = Math.round(elapsed);
+                this.currentSession.durationMinutes = Math.round(
+                    (Date.now() - this.currentSession.startTime) / 60000
+                );
                 this._onDidChange.fire();
             }
         }, 60_000);
 
-        this.logger.info(`Focus session started: ${goal} (${goalMinutes}m)`);
+        this.log.info(`Focus session started: "${goal}" (${goalMinutes}m)`);
         this._onDidChange.fire();
     }
 
+    /** Stop the current focus session and return its summary. */
     public stopSession(): FocusSession | null {
         if (!this.currentSession) { return null; }
 
@@ -93,36 +100,33 @@ export class FocusSessionManager implements vscode.Disposable {
             clearInterval(this.sessionTimer);
             this.sessionTimer = undefined;
         }
+        this.sessionDisposables.forEach(d => d.dispose());
+        this.sessionDisposables.length = 0;
 
         const session = this.currentSession;
         session.endTime = Date.now();
         session.durationMinutes = Math.round((session.endTime - session.startTime) / 60000);
 
-        // Calculate flow score (0-10)
+        // Flow score: goal completion weighted + low switching bonus
         const goalRatio = Math.min(1, session.durationMinutes / session.goalMinutes);
         const switchPenalty = Math.min(1, session.contextSwitches / 20);
         session.flowScore = Math.round((goalRatio * 8 + (1 - switchPenalty) * 2) * 10) / 10;
 
-        this.storageManager.saveFocusSession(session).catch(() => {});
+        this.storage.saveFocusSession(session).catch(() => {});
 
-        // Add to today's stats
-        const todayStats = this.storageManager.getTodayStats();
+        // Also save to today's stats
+        const todayStats = this.storage.getTodayStats();
         todayStats.focusSessions.push(session);
-        this.storageManager.saveDayStats(todayStats).catch(() => {});
+        this.storage.saveDayStats(todayStats).catch(() => {});
 
         this.currentSession = null;
-        this.logger.info(`Focus session ended. Duration: ${session.durationMinutes}m, Flow: ${session.flowScore}/10`);
+        this.log.info(`Focus session ended. Duration: ${session.durationMinutes}m, Flow: ${session.flowScore}/10`);
         this._onDidChange.fire();
         return session;
     }
 
-    public getCurrentSession(): FocusSession | null {
-        return this.currentSession;
-    }
-
-    public isActive(): boolean {
-        return this.currentSession !== null;
-    }
+    public getCurrentSession(): FocusSession | null { return this.currentSession; }
+    public isActive(): boolean { return this.currentSession !== null; }
 
     public getElapsedMinutes(): number {
         if (!this.currentSession) { return 0; }
@@ -130,13 +134,12 @@ export class FocusSessionManager implements vscode.Disposable {
     }
 
     public getRecentSessions(limit = 10): FocusSession[] {
-        return this.storageManager.getFocusSessions().slice(-limit).reverse();
+        return this.storage.getFocusSessions().slice(-limit).reverse();
     }
 
     public dispose(): void {
-        if (this.currentSession) {
-            this.stopSession();
-        }
+        if (this.currentSession) { this.stopSession(); }
+        this.sessionDisposables.forEach(d => d.dispose());
         this._onDidChange.dispose();
     }
 }
