@@ -2,7 +2,7 @@
   "name": "devpulse",
   "displayName": "DevPulse — Developer Productivity Insights",
   "description": "Automatically tracks coding activity and transforms it into meaningful productivity insights. Goes beyond time tracking to reveal work intent, focus patterns, context switching, and AI-powered coaching.",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "publisher": "apertacodex",
   "license": "MIT",
   "repository": {
